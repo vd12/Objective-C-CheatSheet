@@ -259,13 +259,13 @@ typedef enum {
 // Set bits (only valid if it makes sense that your status may have many of the bitmask values)
 RPBitMask status = RPOptionNone;
 status |= RPOptionBottom;
-status != RPOptionTop;
+status |= RPOptionTop;
 
 // Toggle bit
 status ^= RPOptionTop;
 
 // Set single bit to zero
-status &= ! RPOptionBottom;
+status &= ^RPOptionBottom;
 
 // Check if it matches a certain bit
 if (status & RPOptionTop) { 
@@ -921,32 +921,20 @@ __block int someIncrementer = 0;
 Since blocks strongly capture all variables within the scope of the block, you have to be careful how you setup your blocks code.  Here are two examples of retain cycles:
 
 ```objC
-[someObject someMethodThatTakesABlock:^{
-    [someObject performSomeAction];  // Will raise a warning
-}];
-
-[self someMethodThatTakesABlock:^{
-    [self performSomeAction];       // Will raise a warning
-}];
+someObject.block = ^{
+   [someObject someMethod];   // Will raise a warning, someObject will not be deallocated, even the block is not called
+};
 ```
 
-In both of these cases, the object which performs the block owns the block, which also owns the object. This creates a loop, or a retain cycle, which means the memory is eventually leaked.
+In both of these cases, the object owns the block, which also owns the object. This creates a loop, or a retain cycle, which means the memory is eventually leaked.
 
-To get around this warning you can either refactor the code to be:
-
-```objC
-[self someMethodThatTakesABlock:^{
-    [object performSomeAction];   // No retain cycle here
-}];
-```
-
-Or you can use a `__weak` object:
+To get around this warning you can you can use a `__weak` object:
 
 ```objC
-__weak typeof(self) weakSelf = self;
-[self someMethodThatTakesABlock:^{
-    [weakSelf performSomeAction];  // No retain cycle here
-}];
+__weak id someWeakObject = someObject;
+someObject.block = ^{
+   [someWeakObject someMethod];
+};
 ```
 
 [Back to top](#objective-c-cheat-sheet)
